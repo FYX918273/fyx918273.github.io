@@ -168,6 +168,8 @@ tbody tr:hover{background:#FAFBFE}
 .stage-row select{border:1px solid var(--line);border-radius:7px;padding:6px 9px;background:#fff;font:inherit;min-width:104px}
 .stage-group{padding:10px 0;border-bottom:1px solid var(--line)}.stage-group:last-child{border-bottom:0}.stage-group h3{font-size:14px;margin:0 0 7px;color:var(--ink)}.stage-group .stage-row:last-child{border-bottom:0}.stage-date{color:var(--sub);font-size:12px;margin-left:auto}
 .stage-name{min-width:0;overflow-wrap:anywhere}
+.stage-row input.stage-name{flex:1;max-width:100%;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:#fff;color:var(--ink);font:inherit}
+#githubToken{min-width:220px;max-width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px}
 .stage-tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#F0F4FB;color:#526278;font-size:11px;font-weight:700;white-space:nowrap}
 .stage-tag.active{background:#E7F0FF;color:#1D6FF2}.stage-tag.review{background:#FFF2D8;color:#A15B00}.stage-tag.ended{background:#E7F7EF;color:#116932}
 @media (max-width:760px){.updated-at{order:5;width:100%;margin-left:0}.mapping-row{grid-template-columns:1fr 70px;}.mapping-row input{grid-column:1/-1}.mapping-row button{grid-column:2}}
@@ -248,7 +250,7 @@ tbody tr:hover{background:#FAFBFE}
 <header class="topbar">
   <div class="topbar-in">
     <div class="brand"><span class="logo">9</span><span class="brand-title">天津门店 KOS 视频数据看板<small>KOS/员工账号</small></span></div>
-    <span class="version-badge">v2.3.5</span>
+    <span class="version-badge">v2.4.1</span>
     <span class="work-chip">天津九号城市运营中心</span>
     <span class="updated-at" id="updatedAt"></span>
     <nav class="nav" id="nav">
@@ -320,14 +322,16 @@ tbody tr:hover{background:#FAFBFE}
   <section id="sc" class="view">
     <div class="section-title"><h2>更新数据</h2><p>仅通过地址栏输入 <code>#sc</code> 进入，不在看板导航显示。</p></div>
     <div class="card">
-      <div class="sc-intro">从矩阵通选择一个或多个任务 Excel 上传。同名任务按来源文件分别统计；重传同名文件只替换该文件的数据。核对后下载 data.json 替换 GitHub 仓库同名文件，门店刷新即可查看。</div>
+      <div class="sc-intro">选择矩阵通 Excel，点击「识别并发布」。同一任务的新导出表替换旧数据；同名但文件名前缀不同的任务分别统计，前缀会出现在任务名称中。任务名仍可在下方修改。</div>
       <div class="sc-actions">
         <input class="file-input" id="dataFiles" type="file" accept=".xlsx,.xls" multiple>
-        <button class="primary-btn" id="applyUpload" type="button">识别并更新</button>
-        <button class="ghost-btn" id="downloadData" type="button">下载共享数据文件</button>
+        <button class="primary-btn" id="applyUpload" type="button">识别并发布</button>
+        <input id="githubToken" type="password" placeholder="首次发布填 GitHub 令牌" autocomplete="off" aria-label="GitHub 访问令牌">
+        <button class="ghost-btn" id="publishChanges" type="button">发布名称/门店修改</button>
         <button class="ghost-btn" id="resetData" type="button">清空当前浏览器数据</button>
       </div>
       <div class="sc-status" id="uploadStatus"></div>
+      <p class="count-note">首次发布需要此仓库的 GitHub 令牌（Contents: Read and write）。本次浏览器会话记住令牌，不写入网页或任务数据。发布完成后 GitHub Pages 会自动部署。</p>
     </div>
     <div class="section-title"><h2>任务阶段</h2><p>各阶段分组，组内按最早作品发布时间从近到远排列；无作品时间的任务排最后。获得奖励或积分自动标记「已结束」，其余请手动核实。</p></div>
     <div class="card" id="scTaskStages"></div>
@@ -374,9 +378,10 @@ tbody tr:hover{background:#FAFBFE}
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-const BASE_RAW = {context:'天津九号城市运营中心',updated_at:'',kpi:{accounts:0,done:0,total:0,rate:0,works:0,spread:0,interact:0,likes:0,stores:0,records:0,unmapped_accounts:0},stores:[],task_store:{},plat_sum:{'抖音':{works:0},'快手':{works:0},'小红书':{works:0},'视频号':{works:0}},team:[],works:[],matrix:{},accts:{},unmapped_accounts:[],manual_mappings:{},task_stages:{},task_stage_overrides:{},source_rows:[],source_works:[],source_files:[]};
+const BASE_RAW = {context:'天津九号城市运营中心',updated_at:'',kpi:{accounts:0,done:0,total:0,rate:0,works:0,spread:0,interact:0,likes:0,stores:0,records:0,unmapped_accounts:0},stores:[],task_store:{},plat_sum:{'抖音':{works:0},'快手':{works:0},'小红书':{works:0},'视频号':{works:0}},team:[],works:[],matrix:{},accts:{},unmapped_accounts:[],manual_mappings:{},task_labels:{},task_stages:{},task_stage_overrides:{},source_rows:[],source_works:[],source_files:[]};
 let RAW = JSON.parse(JSON.stringify(BASE_RAW));
 let dataIsDraft = false;
+let publishedUpdatedAt = '';
 let TASKS = RAW.team.map(t=>t.task);
 const PLATS = ['抖音','快手','小红书','视频号'];
 const PLAT_COLORS = {'抖音':'#161823','快手':'#FF5A1F','小红书':'#FF2E4D','视频号':'#07C160'};
@@ -454,6 +459,15 @@ function taskNameFromFilename(name){
   const base=String(name||'').replace(/\.[^.]+$/,'').replace(/\d{10,}$/,'').trim();
   return base || '未命名任务';
 }
+function filenameLabel(file,task){
+  const base=taskNameFromFilename(file), source=clean(task);
+  if(base===source) return '';
+  if(base.endsWith(source)) return base.slice(0,-source.length).replace(/[\s_【】()（）-]+$/g,'')||base;
+  return base;
+}
+function sourceIdentity(file,task){
+  return clean(task)+'|'+filenameLabel(file,task);
+}
 function distinguishUploadedTasks(rows,works){
   const filesByTask=new Map();
   rows.concat(works).forEach(item=>{
@@ -464,15 +478,22 @@ function distinguishUploadedTasks(rows,works){
   });
   const oldNames=new Map();
   (RAW.source_rows||[]).forEach(item=>{ if(item.source_file&&!oldNames.has(item.source_file)) oldNames.set(item.source_file,item.task); });
-  const labels=new Map();
+  const labels=new Map(), custom=RAW.task_labels||{};
   filesByTask.forEach((files,source)=>{
     const names=Array.from(files);
     names.forEach(file=>{
       const stem=file.replace(/\.[^.]+$/,'');
       const suffix=names.filter(name=>name.replace(/\.[^.]+$/,'')===stem).length>1?file:stem;
-      labels.set(source+'|'+file,files.size>1?source+'（'+suffix+'）':source);
+      const label=sourceIdentity(file,source).split('|').slice(1).join('|');
+      labels.set(source+'|'+file,clean(custom[sourceIdentity(file,source)])||(label&&label!==source?source+'（'+label+'）':files.size>1?source+'（'+suffix+'）':source));
     });
   });
+  const occupied=new Set();
+  filesByTask.forEach((files,source)=>Array.from(files).forEach(file=>{
+    const key=source+'|'+file, label=labels.get(key);
+    if(occupied.has(label)) labels.set(key,source+'（'+file+'）');
+    occupied.add(labels.get(key));
+  }));
   rows.concat(works).forEach(item=>{
     item.source_task=clean(item.source_task)||clean(item.task);
     item.task=labels.get(item.source_task+'|'+clean(item.source_file))||item.source_task;
@@ -536,7 +557,7 @@ function rebuildRaw(sourceRows,sourceWorks,manual){
   const all=aggregate(rows); const kpi=Object.assign({},all,{stores:stores.length,accounts:unique(rows.map(r=>keyOf(r.platform,r.nickname))).length,records:rows.length,unmapped_accounts:unmapped.length});
   const overrides=Object.assign({},(RAW&&RAW.task_stage_overrides)||{});
   const stages={}; taskNames.forEach(task=>{ stages[task]=overrides[task]||inferredTaskStage(rows.filter(r=>r.task===task)); });
-  return {context:'天津九号城市运营中心',updated_at:RAW&&RAW.updated_at?RAW.updated_at:'',kpi,stores:storeSummary,task_store:taskStore,plat_sum:platSum,team,works,matrix,accts,unmapped_accounts:unmapped,manual_mappings:manual||{},task_stages:stages,task_stage_overrides:overrides,source_rows:rows.map(r=>Object.assign({},r)),source_works:(sourceWorks||[]).map(w=>Object.assign({},w))};
+  return {context:'天津九号城市运营中心',updated_at:RAW&&RAW.updated_at?RAW.updated_at:'',kpi,stores:storeSummary,task_store:taskStore,plat_sum:platSum,team,works,matrix,accts,unmapped_accounts:unmapped,manual_mappings:manual||{},task_labels:Object.assign({},RAW.task_labels||{}),task_stages:stages,task_stage_overrides:overrides,source_rows:rows.map(r=>Object.assign({},r)),source_works:(sourceWorks||[]).map(w=>Object.assign({},w))};
 }
 function loadStoredRaw(){
   try{
@@ -558,27 +579,22 @@ function saveRaw(){ try{ localStorage.setItem(SC_KEY,JSON.stringify(RAW)); }catc
 async function loadPublishedData(){
   try{
     const response=await fetch('./data.json',{cache:'no-store'});
-    if(!response.ok) throw new Error('数据文件读取失败');
+    if(!response.ok) throw new Error('数据读取失败');
     const data=await response.json();
-    if(!data||!Array.isArray(data.source_rows)||!Array.isArray(data.source_works)||!Array.isArray(data.team)) throw new Error('数据文件格式不正确');
-    RAW=data; dataIsDraft=false;
+    RAW=data&&Array.isArray(data.source_rows)&&Array.isArray(data.source_works)&&Array.isArray(data.team)?data:clone(BASE_RAW);
+    dataIsDraft=false; publishedUpdatedAt=clean(RAW.updated_at);
     const draft=loadStoredRaw();
-    if(draft&&Array.isArray(draft.team)&&draft.updated_at&&draft.updated_at>clean(data.updated_at)){
+    if(location.hash==='#sc'&&draft&&Array.isArray(draft.team)&&draft.updated_at&&draft.updated_at>clean(RAW.updated_at)){
       RAW=draft; dataIsDraft=true;
-      if(location.hash==='#sc') setUploadStatus('当前显示本机草稿；其他设备显示的是已发布数据。核对后下载 data.json 并替换仓库文件。','ok');
+      setUploadStatus('已恢复尚未发布的修改，确认后可继续发布。','ok');
+    }else if(draft&&clean(draft.updated_at)&&clean(draft.updated_at)===clean(RAW.updated_at)){
+      try{localStorage.removeItem(SC_KEY);}catch(error){}
     }
   }catch(e){
     const draft=loadStoredRaw();
     if(draft&&Array.isArray(draft.team)){ RAW=draft; dataIsDraft=true; }
   }
   syncRuntime();render();
-}
-function downloadData(){
-  const blob=new Blob([JSON.stringify(RAW,null,2)],{type:'application/json;charset=utf-8'});
-  const url=URL.createObjectURL(blob),link=document.createElement('a');
-  link.href=url;link.download='data.json';document.body.appendChild(link);link.click();link.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-  setUploadStatus('已下载 data.json；请替换 GitHub 仓库根目录的同名文件，门店刷新后即可看到这份数据。','ok');
 }
 function syncRuntime(){
   TASKS=sortTasksByDate(RAW.team.map(t=>t.task),RAW.source_works||[]);
@@ -901,16 +917,40 @@ function renderTaskStages(){
     return '<div class="stage-group"><h3>'+stage+' · '+tasks.length+' 项</h3>'+
       (tasks.length?'<div class="stage-list">'+tasks.map(t=>{
         const date=taskDate(t,RAW.source_works||[]);
-        return '<div class="stage-row"><span class="stage-name">'+escapeHtml(t)+'</span><span class="stage-date">'+(date?date.slice(0,10):'时间未记录')+'</span><span class="stage-origin">'+(RAW.task_stage_overrides&&RAW.task_stage_overrides[t]?'手动设置':'自动识别')+'</span><select data-stage-task="'+encodeURIComponent(t)+'" aria-label="'+escapeHtml(t)+' 的任务阶段">'+Object.keys(TASK_STAGES).map(s=>'<option value="'+s+'"'+(taskStage(t)===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>';
+        return '<div class="stage-row"><input class="stage-name" type="text" value="'+escapeHtml(t)+'" data-task-name="'+encodeURIComponent(t)+'" aria-label="编辑任务名称" title="修改后按回车或离开输入框保存"><span class="stage-date">'+(date?date.slice(0,10):'时间未记录')+'</span><span class="stage-origin">'+(RAW.task_stage_overrides&&RAW.task_stage_overrides[t]?'手动设置':'自动识别')+'</span><select data-stage-task="'+encodeURIComponent(t)+'" aria-label="'+escapeHtml(t)+' 的任务阶段">'+Object.keys(TASK_STAGES).map(s=>'<option value="'+s+'"'+(taskStage(t)===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>';
       }).join('')+'</div>':'<span class="empty-line">暂无任务</span>')+'</div>';
   }).join(''):'<span class="empty-line">暂无任务数据，上传后可设置阶段。</span>';
   box.querySelectorAll('[data-stage-task]').forEach(sel=>sel.addEventListener('change',()=>{
     const task=decodeURIComponent(sel.getAttribute('data-stage-task'));
     RAW.task_stage_overrides=Object.assign({},RAW.task_stage_overrides||{},{[task]:sel.value});
     RAW.task_stages=Object.assign({},RAW.task_stages||{},{[task]:sel.value});
-    saveRaw(); render();
+    RAW.updated_at=nowText(); dataIsDraft=true; saveRaw(); syncRuntime(); render();
     setUploadStatus('已保存「'+task+'」的阶段：'+sel.value+'。','ok');
   }));
+  box.querySelectorAll('[data-task-name]').forEach(input=>{
+    input.addEventListener('keydown',event=>{ if(event.key==='Enter') input.blur(); });
+    input.addEventListener('change',()=>renameTask(decodeURIComponent(input.getAttribute('data-task-name')),input.value));
+  });
+}
+function renameTask(oldName,value){
+  const name=clean(value);
+  if(!name||name===oldName){ renderTaskStages(); return; }
+  if(RAW.team.some(t=>t.task===name)){ setUploadStatus('任务名称已存在，请换一个名称。','err'); renderTaskStages(); return; }
+  const files=new Set((RAW.source_rows||[]).filter(r=>r.task===oldName).map(r=>r.source_file));
+  if(files.size!==1){ setUploadStatus('无法定位该任务的唯一来源文件。','err'); renderTaskStages(); return; }
+  const file=Array.from(files)[0];
+  const source=(RAW.source_rows||[]).find(r=>r.task===oldName).source_task||oldName;
+  RAW.task_labels=Object.assign({},RAW.task_labels||{},{[sourceIdentity(file,source)]:name});
+  const rows=(RAW.source_rows||[]).map(r=>Object.assign({},r,{task:r.task===oldName?name:r.task}));
+  const works=(RAW.source_works||[]).map(w=>Object.assign({},w,{task:w.task===oldName?name:w.task}));
+  const override=RAW.task_stage_overrides&&RAW.task_stage_overrides[oldName];
+  RAW.task_stage_overrides=Object.assign({},RAW.task_stage_overrides||{});
+  delete RAW.task_stage_overrides[oldName];
+  if(override) RAW.task_stage_overrides[name]=override;
+  const next=rebuildRaw(rows,works,RAW.manual_mappings||{});
+  next.source_files=RAW.source_files||[]; next.updated_at=nowText();
+  RAW=next; dataIsDraft=true; saveRaw(); syncRuntime(); render();
+  setUploadStatus('已将任务「'+oldName+'」改名为「'+name+'」。确认无误后点击「确认同步到网站」。','ok');
 }
 function saveAllMappings(){
   const entries=Array.from(document.querySelectorAll('#scPending [data-map-input]'))
@@ -965,17 +1005,19 @@ async function applyUpload(){
   setUploadStatus('正在读取 '+files.length+' 个文件…');
   try{
     const parsed=[]; for(const file of files) parsed.push(await parseUploadFile(file));
-    const uploadedNames=new Set(parsed.map(x=>x.name));
-    const combinedRows=(RAW.source_rows||[]).filter(r=>!uploadedNames.has(r.source_file)).map(r=>Object.assign({},r)).concat(parsed.flatMap(x=>x.rows));
-    const combinedWorks=(RAW.source_works||[]).filter(w=>!uploadedNames.has(w.source_file)).map(w=>Object.assign({},w)).concat(parsed.flatMap(x=>x.works));
+    const uploadedKeys=new Set(parsed.map(x=>sourceIdentity(x.name,x.task)));
+    const retained=item=>!uploadedKeys.has(sourceIdentity(item.source_file,item.source_task||item.task));
+    const combinedRows=(RAW.source_rows||[]).filter(retained).map(r=>Object.assign({},r)).concat(parsed.flatMap(x=>x.rows));
+    const combinedWorks=(RAW.source_works||[]).filter(retained).map(w=>Object.assign({},w)).concat(parsed.flatMap(x=>x.works));
     RAW.task_stage_overrides=distinguishUploadedTasks(combinedRows,combinedWorks);
     const rows=dedupeUploaded(combinedRows,accountUploadKey);
     const works=dedupeUploaded(combinedWorks,workUploadKey);
     const tasks=new Set(parsed.map(x=>x.rows[0]&&x.rows[0].task).filter(Boolean));
     const next=rebuildRaw(rows,works,RAW.manual_mappings||{});
-    next.updated_at=nowText(); next.source_files=Array.from(new Set((RAW.source_files||[]).concat(parsed.map(x=>x.name))));
+    next.updated_at=nowText(); next.source_files=unique(rows.map(r=>r.source_file));
     RAW=next; dataIsDraft=true; saveRaw(); syncRuntime(); render();
-    setUploadStatus('已处理 '+parsed.length+' 份文件，记录为 '+tasks.size+' 个独立任务：'+Array.from(tasks).join('、')+'。本批账号 '+dedupeUploaded(parsed.flatMap(x=>x.rows),accountUploadKey).length+' 条、作品 '+dedupeUploaded(parsed.flatMap(x=>x.works),workUploadKey).length+' 条。最后更新时间 '+RAW.updated_at+'。','ok');
+    setUploadStatus('已识别 '+parsed.length+' 份文件、'+tasks.size+' 项任务；正在发布到网站…');
+    await publishData();
     input.value='';
   }catch(err){ setUploadStatus('更新失败：'+(err&&err.message?err.message:String(err)),'err'); }
 }
@@ -983,8 +1025,35 @@ function resetData(){
   try{localStorage.removeItem(SC_KEY);}catch(e){}
   loadPublishedData().then(()=>setUploadStatus('已清除本机草稿，恢复已发布数据。','ok'));
 }
+function encodeBase64Utf8(value){
+  const bytes=new TextEncoder().encode(value); let binary='';
+  for(let i=0;i<bytes.length;i+=32768) binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
+  return btoa(binary);
+}
+async function publishData(){
+  if(!RAW.source_rows.length){ setUploadStatus('当前没有数据，请先上传 Excel。','err'); return; }
+  const tokenInput=document.getElementById('githubToken');
+  const token=clean(tokenInput.value)||sessionStorage.getItem('tjkos-publish-token');
+  if(!token){ setUploadStatus('已识别，但尚未发布。请填入 GitHub 令牌，再点击「发布名称/门店修改」。','err'); return; }
+  sessionStorage.setItem('tjkos-publish-token',token); tokenInput.value='';
+  const url='https://api.github.com/repos/FYX918273/fyx918273.github.io/contents/data.json';
+  const headers={'Accept':'application/vnd.github+json','Authorization':'Bearer '+token,'X-GitHub-Api-Version':'2022-11-28'};
+  try{
+    const current=await fetch(url,{headers,cache:'no-store'});
+    if(!current.ok) throw new Error('无法读取仓库数据（HTTP '+current.status+'）；请检查令牌权限。');
+    const existing=await current.json();
+    const remote=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(existing.content.replace(/\s/g,'')),c=>c.charCodeAt(0))));
+    if(clean(remote.updated_at)!==publishedUpdatedAt) throw new Error('网站数据已被其他设备更新，请刷新后再上传，以免覆盖新数据。');
+    const body={message:'Update KOS dashboard data',content:encodeBase64Utf8(JSON.stringify(RAW)),sha:existing.sha,branch:'main'};
+    const response=await fetch(url,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},headers),body:JSON.stringify(body)});
+    if(!response.ok) throw new Error('GitHub 写入失败（HTTP '+response.status+'）；请检查令牌的 Contents 读写权限。');
+    publishedUpdatedAt=RAW.updated_at; dataIsDraft=false; syncRuntime();
+    try{localStorage.removeItem(SC_KEY);}catch(error){}
+    setUploadStatus('发布成功！GitHub Pages 部署后，其他人刷新网页即可看到。','ok');
+  }catch(error){ setUploadStatus('未发布：'+(error&&error.message?error.message:String(error)),'err'); }
+}
 document.getElementById('applyUpload').addEventListener('click',applyUpload);
-document.getElementById('downloadData').addEventListener('click',downloadData);
+document.getElementById('publishChanges').addEventListener('click',publishData);
 document.getElementById('resetData').addEventListener('click',resetData);
 document.getElementById('saveAllMappings').addEventListener('click',saveAllMappings);
 
