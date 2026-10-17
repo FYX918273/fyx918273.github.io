@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FFFFFF">
 <title>天津门店KOS视频数据看板</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%231D6FF2'/%3E%3Cpath d='M7 6l10 6-10 6z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap">
@@ -23,6 +24,8 @@ a{color:inherit;text-decoration:none}
 .topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
 .topbar-in{max-width:1280px;margin:0 auto;padding:0 18px;height:58px;display:flex;align-items:center;gap:14px}
 .brand{display:flex;align-items:center;gap:9px;font-weight:900;font-size:17px;letter-spacing:.3px}
+.brand-title{min-width:0}
+.version-badge{display:inline-flex;align-items:center;border-radius:999px;border:1px solid #DCE6F7;background:#F4F8FF;color:#46658E;padding:2px 7px;font-size:11px;font-weight:700;white-space:nowrap;flex:none}
 .brand .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#1D6FF2,#4C94FF);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px}
 .brand small{font-weight:400;color:var(--sub);font-size:12px;margin-left:2px}
 .work-chip{display:inline-flex;align-items:center;gap:5px;background:var(--blue-weak);color:var(--blue);border:1px solid #C9DBFC;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;white-space:nowrap}
@@ -156,6 +159,7 @@ tbody tr:hover{background:#FAFBFE}
 .stage-row:last-child{border-bottom:0}
 .stage-row select{border:1px solid var(--line);border-radius:7px;padding:6px 9px;background:#fff;font:inherit;min-width:104px}
 .stage-group{padding:10px 0;border-bottom:1px solid var(--line)}.stage-group:last-child{border-bottom:0}.stage-group h3{font-size:14px;margin:0 0 7px;color:var(--ink)}.stage-group .stage-row:last-child{border-bottom:0}.stage-date{color:var(--sub);font-size:12px;margin-left:auto}
+.stage-name{min-width:0;overflow-wrap:anywhere}
 .stage-tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#F0F4FB;color:#526278;font-size:11px;font-weight:700;white-space:nowrap}
 .stage-tag.active{background:#E7F0FF;color:#1D6FF2}.stage-tag.review{background:#FFF2D8;color:#A15B00}.stage-tag.ended{background:#E7F7EF;color:#116932}
 @media (max-width:760px){.updated-at{order:5;width:100%;margin-left:0}.mapping-row{grid-template-columns:1fr 70px;}.mapping-row input{grid-column:1/-1}.mapping-row button{grid-column:2}}
@@ -166,25 +170,76 @@ tbody tr:hover{background:#FAFBFE}
   .store-grid{grid-template-columns:repeat(3,1fr)}
 }
 @media (max-width:640px){
-  .topbar-in{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px}
-  .nav{margin-left:0;width:100%}
-  .nav a{flex:1;text-align:center;padding:8px 4px;font-size:13px}
-  .kpis{grid-template-columns:repeat(2,1fr);gap:8px}
-  .kpi .val{font-size:22px}
-  .store-grid{grid-template-columns:1fr}
-  .insights{grid-template-columns:1fr}
-  .wrap{padding:14px 12px 36px}
-  .chart{height:230px}
-  .fbtn{font-size:12.5px;padding:5px 10px}
-  .pending-row{align-items:flex-start;flex-wrap:wrap;gap:4px 12px}
-  .pending-name{min-width:100%}
+  .topbar-in{height:auto;padding:9px 12px 8px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 8px}
+  .brand{font-size:15px;line-height:1.3;gap:7px;min-width:0}
+  .brand .logo{width:25px;height:25px;flex:none}
+  .brand small{display:none}
+  .version-badge{justify-self:end;font-size:10px}
+  .work-chip{grid-column:1 / -1;justify-self:start;font-size:11px;padding:2px 8px}
+  .updated-at{grid-column:1 / -1;order:0;width:auto;min-width:0;margin:0;font-size:11px;white-space:normal}
+  .nav{grid-column:1 / -1;margin:0;width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  .nav a{min-width:0;text-align:center;padding:8px 2px;font-size:13px}
+  .wrap{padding:12px 10px 30px;min-width:0}
+  .section-title{display:block;margin:22px 0 9px}
+  .section-title h2{font-size:17px;line-height:1.4}
+  .section-title p{font-size:12px;line-height:1.55;margin-top:4px;overflow-wrap:anywhere}
+  .card{padding:12px;border-radius:12px;min-width:0}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .kpi{min-width:0;padding:11px;gap:3px}
+  .kpi .lb{font-size:11.5px;line-height:1.3}
+  .kpi .val{font-size:clamp(18px,6vw,23px);line-height:1.2;overflow-wrap:anywhere}
+  .kpi .ex{font-size:10.5px;line-height:1.35;overflow-wrap:anywhere}
+  .alert-grid,.store-grid,.insights{grid-template-columns:1fr;gap:9px}
+  .alert{padding:12px;min-width:0}
+  .alert .at{font-size:13px;overflow-wrap:anywhere;align-items:flex-start}
+  .alert .cnt{font-size:12px;line-height:1.5}
+  .chip{font-size:12px;padding:5px 9px}
+  .chart{height:245px}
+  #chartTask{height:340px}
+  .toolbar{gap:8px;align-items:stretch}
+  #taskTabs{flex-wrap:nowrap;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:5px;scrollbar-width:thin}
+  #taskTabs .fbtn{flex:none;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #taskFilt{width:100%}
+  .fbtn{min-height:36px;font-size:12.5px;padding:6px 11px}
+  .count-note{width:100%;margin:0;text-align:left}
+  .search{flex:1 1 100%;width:100%;font-size:16px;min-height:42px}
+  .tbl-scroll,.matrix-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+  #home .tbl-scroll table{min-width:620px}
+  #tasks .tbl-scroll table{min-width:790px}
+  #store .matrix-wrap table{min-width:760px}
+  #store .tbl-scroll table{min-width:750px}
+  th,td{padding:8px 7px}
+  .pending-row{align-items:flex-start;flex-wrap:wrap;gap:4px 12px;overflow-wrap:anywhere}
+  .pending-name{min-width:100%;overflow-wrap:anywhere}
+  .store-head h1{font-size:20px;overflow-wrap:anywhere}
+  .info-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+  .info{padding:8px 6px;min-width:0}
+  .stage-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 8px;padding:10px 2px}
+  .stage-row .stage-name{grid-column:1 / -1;font-size:13px;font-weight:700}
+  .stage-date{grid-column:1;margin:0;font-size:11px}
+  .stage-origin{grid-column:1;font-size:11px;color:var(--sub)}
+  .stage-row select{grid-column:2;grid-row:2 / 4;min-width:112px;max-width:100%;font-size:16px}
+  .mapping-row{grid-template-columns:minmax(0,1fr) auto;gap:7px}
+  .mapping-row .map-name{white-space:normal;overflow-wrap:anywhere}
+  .mapping-row input{grid-column:1 / -1;font-size:16px;min-height:40px}
+  .sc-actions{align-items:stretch}
+  .file-input{width:100%;font-size:14px}
+  .primary-btn,.ghost-btn{min-height:40px;font-size:14px}
+  .foot{padding:12px 12px 26px;font-size:11px}
+}
+@media (max-width:360px){
+  .brand{font-size:13px}
+  .kpi{padding:9px}
+  .kpi .val{font-size:18px}
+  .wrap{padding-left:8px;padding-right:8px}
 }
 </style>
 </head>
 <body>
 <header class="topbar">
   <div class="topbar-in">
-    <div class="brand"><span class="logo">9</span>天津门店 KOS 视频数据看板<small>KOS/员工账号</small></div>
+    <div class="brand"><span class="logo">9</span><span class="brand-title">天津门店 KOS 视频数据看板<small>KOS/员工账号</small></span></div>
+    <span class="version-badge">v2.3.0</span>
     <span class="work-chip">天津九号城市运营中心</span>
     <span class="updated-at" id="updatedAt"></span>
     <nav class="nav" id="nav">
@@ -256,10 +311,11 @@ tbody tr:hover{background:#FAFBFE}
   <section id="sc" class="view">
     <div class="section-title"><h2>更新数据</h2><p>仅通过地址栏输入 <code>#sc</code> 进入，不在看板导航显示。</p></div>
     <div class="card">
-      <div class="sc-intro">从矩阵通选择一个或多个任务 Excel 上传；每个任务按自己文件里的账号和门店计算，不会把其他任务的账号补进来。没有识别到的账号可在下方统一填写门店并批量确认。上传结果只保存在当前浏览器，不会修改 GitHub 仓库。</div>
+      <div class="sc-intro">从矩阵通选择一个或多个任务 Excel 上传；每个任务按自己文件里的账号和门店计算。上传后可先在本机核对，再下载独立的 data.json 并替换 GitHub 仓库中的同名文件，让所有门店看到相同数据。页面代码与数据文件分开；本机草稿也会保存在当前浏览器。</div>
       <div class="sc-actions">
         <input class="file-input" id="dataFiles" type="file" accept=".xlsx,.xls" multiple>
         <button class="primary-btn" id="applyUpload" type="button">识别并更新</button>
+        <button class="ghost-btn" id="downloadData" type="button">下载共享数据文件</button>
         <button class="ghost-btn" id="resetData" type="button">清空当前浏览器数据</button>
       </div>
       <div class="sc-status" id="uploadStatus"></div>
@@ -314,7 +370,7 @@ tbody tr:hover{background:#FAFBFE}
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-const BASE_RAW = {"context":"天津九号城市运营中心","updated_at":"","kpi":{"accounts":0,"done":0,"total":0,"rate":0,"works":0,"spread":0,"interact":0,"likes":0,"stores":0,"records":0,"unmapped_accounts":0},"stores":[],"task_store":{},"plat_sum":{"抖音":{"works":0},"快手":{"works":0},"小红书":{"works":0},"视频号":{"works":0}},"team":[],"works":[],"matrix":{},"accts":{},"unmapped_accounts":[],"manual_mappings":{},"task_stages":{},"source_rows":[],"source_works":[],"source_files":[]};
+const BASE_RAW = {context:'天津九号城市运营中心',updated_at:'',kpi:{accounts:0,done:0,total:0,rate:0,works:0,spread:0,interact:0,likes:0,stores:0,records:0,unmapped_accounts:0},stores:[],task_store:{},plat_sum:{'抖音':{works:0},'快手':{works:0},'小红书':{works:0},'视频号':{works:0}},team:[],works:[],matrix:{},accts:{},unmapped_accounts:[],manual_mappings:{},task_stages:{},task_stage_overrides:{},source_rows:[],source_works:[],source_files:[]};
 let RAW = JSON.parse(JSON.stringify(BASE_RAW));
 let TASKS = RAW.team.map(t=>t.task);
 const PLATS = ['抖音','快手','小红书','视频号'];
@@ -462,6 +518,28 @@ function loadStoredRaw(){
   return null;
 }
 function saveRaw(){ try{ localStorage.setItem(SC_KEY,JSON.stringify(RAW)); }catch(e){} }
+async function loadPublishedData(){
+  try{
+    const response=await fetch('./data.json',{cache:'no-store'});
+    if(!response.ok) throw new Error('数据文件读取失败');
+    const data=await response.json();
+    if(!data||!Array.isArray(data.source_rows)||!Array.isArray(data.source_works)) throw new Error('数据文件格式不正确');
+    RAW=data;
+    const draft=loadStoredRaw();
+    if(draft&&draft.updated_at&&(!RAW.updated_at||draft.updated_at>RAW.updated_at)) RAW=draft;
+  }catch(e){
+    const draft=loadStoredRaw();
+    if(draft) RAW=draft;
+  }
+  syncRuntime();render();
+}
+function downloadData(){
+  const blob=new Blob([JSON.stringify(RAW,null,2)],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='data.json';document.body.appendChild(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  setUploadStatus('已下载 data.json；请替换 GitHub 仓库根目录的同名文件，门店刷新后即可看到这份数据。','ok');
+}
 function syncRuntime(){
   TASKS=sortTasksByDate(RAW.team.map(t=>t.task),RAW.source_works||[]);
   RAW.team.sort((a,b)=>TASKS.indexOf(a.task)-TASKS.indexOf(b.task));
@@ -784,7 +862,7 @@ function renderTaskStages(){
     return '<div class="stage-group"><h3>'+stage+' · '+tasks.length+' 项</h3>'+
       (tasks.length?'<div class="stage-list">'+tasks.map(t=>{
         const date=taskDate(t,RAW.source_works||[]);
-        return '<div class="stage-row"><span>'+escapeHtml(t)+'</span><span class="stage-date">'+(date?date.slice(0,10):'时间未记录')+'</span><span>'+(RAW.task_stage_overrides&&RAW.task_stage_overrides[t]?'手动设置':'自动识别')+'</span><select data-stage-task="'+encodeURIComponent(t)+'" aria-label="'+escapeHtml(t)+' 的任务阶段">'+Object.keys(TASK_STAGES).map(s=>'<option value="'+s+'"'+(taskStage(t)===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>';
+        return '<div class="stage-row"><span class="stage-name">'+escapeHtml(t)+'</span><span class="stage-date">'+(date?date.slice(0,10):'时间未记录')+'</span><span class="stage-origin">'+(RAW.task_stage_overrides&&RAW.task_stage_overrides[t]?'手动设置':'自动识别')+'</span><select data-stage-task="'+encodeURIComponent(t)+'" aria-label="'+escapeHtml(t)+' 的任务阶段">'+Object.keys(TASK_STAGES).map(s=>'<option value="'+s+'"'+(taskStage(t)===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>';
       }).join('')+'</div>':'<span class="empty-line">暂无任务</span>')+'</div>';
   }).join(''):'<span class="empty-line">暂无任务数据，上传后可设置阶段。</span>';
   box.querySelectorAll('[data-stage-task]').forEach(sel=>sel.addEventListener('change',()=>{
@@ -844,14 +922,12 @@ function resetData(){
   RAW=clone(BASE_RAW); syncRuntime(); render(); setUploadStatus('已清空当前浏览器数据。','ok');
 }
 document.getElementById('applyUpload').addEventListener('click',applyUpload);
+document.getElementById('downloadData').addEventListener('click',downloadData);
 document.getElementById('resetData').addEventListener('click',resetData);
 document.getElementById('saveAllMappings').addEventListener('click',saveAllMappings);
 
 /* ===== 启动 ===== */
-const savedRaw=loadStoredRaw();
-if(savedRaw) RAW=savedRaw;
-syncRuntime();
-render();
+loadPublishedData();
 </script>
 </body>
 </html>
