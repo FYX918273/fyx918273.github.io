@@ -155,6 +155,7 @@ tbody tr:hover{background:#FAFBFE}
 .stage-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px}
 .stage-row:last-child{border-bottom:0}
 .stage-row select{border:1px solid var(--line);border-radius:7px;padding:6px 9px;background:#fff;font:inherit;min-width:104px}
+.stage-group{padding:10px 0;border-bottom:1px solid var(--line)}.stage-group:last-child{border-bottom:0}.stage-group h3{font-size:14px;margin:0 0 7px;color:var(--ink)}.stage-group .stage-row:last-child{border-bottom:0}.stage-date{color:var(--sub);font-size:12px;margin-left:auto}
 .stage-tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#F0F4FB;color:#526278;font-size:11px;font-weight:700;white-space:nowrap}
 .stage-tag.active{background:#E7F0FF;color:#1D6FF2}.stage-tag.review{background:#FFF2D8;color:#A15B00}.stage-tag.ended{background:#E7F7EF;color:#116932}
 @media (max-width:760px){.updated-at{order:5;width:100%;margin-left:0}.mapping-row{grid-template-columns:1fr 70px;}.mapping-row input{grid-column:1/-1}.mapping-row button{grid-column:2}}
@@ -263,7 +264,7 @@ tbody tr:hover{background:#FAFBFE}
       </div>
       <div class="sc-status" id="uploadStatus"></div>
     </div>
-    <div class="section-title"><h2>任务阶段</h2><p>任一账号的「奖励情况」为已获奖励或已获积分时，自动标记该任务为「已结束」。其余任务暂列「待核实」，请按实际进度手动选择；手动选择优先于自动识别。</p></div>
+    <div class="section-title"><h2>任务阶段</h2><p>各阶段分组，组内按最早作品发布时间从近到远排列；无作品时间的任务排最后。获得奖励或积分自动标记「已结束」，其余请手动核实。</p></div>
     <div class="card" id="scTaskStages"></div>
     <div class="section-title"><h2>待核对账号</h2><p>为需要核对的账号填写门店，填好后点击一次「批量确认归店」；未填写的账号继续保留待核对。</p></div>
     <div class="card" id="scPending"></div>
@@ -397,6 +398,16 @@ function taskOrder(rows){
   (rows||[]).forEach((r,i)=>{ const t=clean(r.task); if(t&&!seen.has(t)) seen.set(t,i); });
   return Array.from(seen.keys());
 }
+function taskDate(task, works){
+  const dates=(works||[]).filter(w=>w.task===task).map(w=>clean(w.pub_time)).filter(v=>/^\d{4}-\d{2}-\d{2}/.test(v));
+  return dates.length?dates.sort()[0]:'';
+}
+function sortTasksByDate(tasks, works){
+  return tasks.slice().sort((a,b)=>{
+    const da=taskDate(a,works),db=taskDate(b,works);
+    return (db?1:0)-(da?1:0) || (db&&da?db.localeCompare(da):0) || a.localeCompare(b,'zh-CN');
+  });
+}
 function inferredTaskStage(rows){
   return rows.some(r=>/^已获(?:奖励|积分)/.test(clean(r.reward)))?'已结束':'待核实';
 }
@@ -412,7 +423,7 @@ function rebuildRaw(sourceRows,sourceWorks,manual){
     operator:clean(r.operator),status:clean(r.status),works:num(r.works),spread:num(r.spread),interact:num(r.interact),likes:num(r.likes),
     store:mapStore(r.operator,r.nickname,manual)})).filter(r=>r.task&&r.platform&&r.nickname);
   const stores=unique(rows.filter(r=>r.store!=='待核对').map(r=>r.store)).sort((a,b)=>a.localeCompare(b,'zh-CN'));
-  const taskNames=taskOrder(rows);
+  const taskNames=sortTasksByDate(taskOrder(rows),sourceWorks);
   const storeSummary=stores.map(store=>Object.assign({store},aggregate(rows.filter(r=>r.store===store))))
     .sort((a,b)=>b.spread-a.spread||b.works-a.works||b.rate-a.rate);
   const taskStore={};
@@ -452,7 +463,8 @@ function loadStoredRaw(){
 }
 function saveRaw(){ try{ localStorage.setItem(SC_KEY,JSON.stringify(RAW)); }catch(e){} }
 function syncRuntime(){
-  TASKS=RAW.team.map(t=>t.task);
+  TASKS=sortTasksByDate(RAW.team.map(t=>t.task),RAW.source_works||[]);
+  RAW.team.sort((a,b)=>TASKS.indexOf(a.task)-TASKS.indexOf(b.task));
   const text='数据更新时间：'+(RAW.updated_at||'—');
   const a=document.getElementById('updatedAt'), b=document.getElementById('footerUpdated');
   if(a) a.textContent=text; if(b) b.textContent=RAW.updated_at||'—';
@@ -534,7 +546,8 @@ function renderHome(){
     ).join('')+'</div>' : '<span class="empty-line">暂无待核对账号</span>';
 
   /* 预警 */
-  document.getElementById('alerts').innerHTML = TASKS.length?TASKS.map(t=>{
+  const alertTasks=TASKS.filter(t=>!['审核中','校验中','已结束'].includes(taskStage(t)));
+  document.getElementById('alerts').innerHTML = alertTasks.length?alertTasks.map(t=>{
     const todo=[], part=[];
     RAW.stores.forEach(s=>{
       const st=taskStatus(s.store,t);
@@ -547,7 +560,7 @@ function renderHome(){
       '<div class="cnt">账号完成 '+taskData.done+'/'+taskData.total+' · 未完成 <b style="color:#B42318">'+todo.length+'</b> 家 · 部分完成 <b style="color:#B26A06">'+part.length+'</b> 家</div>'+
       '<div class="chips">'+(todo.length?todo.map(n=>chip(n,'todo')).join(''):'')+(part.length?part.map(n=>chip(n,'partial')).join(''):'')+
       (todo.length+part.length?'':'<span class="empty-line">全部完成</span>')+'</div></div>';
-  }).join(''):'<span class="empty-line">暂无任务数据。</span>';
+  }).join(''):'<span class="empty-line">暂无需要预警的任务。</span>';
 
   /* 任务完成率柱图 */
   const c1 = mkChart('chartTask');
@@ -610,7 +623,7 @@ function renderHome(){
 /* ===== 任务完成度 ===== */
 let taskFilt = 'all';
 function renderTasks(){
-  if(!cur.task || !TASKS.includes(cur.task)) cur.task = TASKS[1]||TASKS[0]||'';
+  if(!cur.task || !TASKS.includes(cur.task)) cur.task = TASKS[0]||'';
   document.getElementById('taskTabs').innerHTML = TASKS.map(t=>
     '<button class="fbtn'+(t===cur.task?' on':'')+'" onclick="setTask(\''+t.replace(/'/g,"\\'")+'\')">'+t+'</button>').join('');
   const filts = [['all','全部'],['todo','只看未完成'],['partial','只看部分完成'],['done','只看完成']];
@@ -656,25 +669,21 @@ function renderStores(){
     '<button class="fbtn'+(storeSort===s[0]?' on':'')+'" onclick="setSort(\''+s[0]+'\')">'+s[1]+'</button>').join('');
   let list = RAW.stores.slice();
   if(storeQ) list = list.filter(s=>s.store.indexOf(storeQ)>-1);
-  const bad = s=>TASKS.reduce((a,t)=>a+(taskStatus(s.store,t)==='todo'?1:0),0);
+  const bad = s=>TASKS.reduce((a,t)=>a+(taskStage(t)==='进行中'&&['todo','partial'].includes(taskStatus(s.store,t))?1:0),0);
   if(storeSort==='pending') list.sort((a,b)=> bad(b)-bad(a) || a.rate-b.rate || b.spread-a.spread);
   else if(storeSort==='rate') list.sort((a,b)=> a.rate-b.rate || bad(b)-bad(a));
   else list.sort((a,b)=> b.spread-a.spread || a.rate-b.rate);
   document.getElementById('storeNote').textContent = list.length ? list.length+' 家门店' : '暂无门店数据，请先在 #sc 上传 Excel。';
   document.getElementById('storeCards').innerHTML = list.map(s=>{
-    const bd = bad(s), participated=TASKS.filter(t=>taskStatus(s.store,t)!=='absent').length;
-    const tk = TASKS.map(t=>{
-      const st = taskStatus(s.store,t);
-      return '<div class="tk-row"><span class="badge '+STAT_META[st].cls+'" style="font-size:10.5px;padding:1px 7px">'+STAT_META[st].t+'</span><span class="tname">'+t+'</span></div>';
-    }).join('');
+    const bd = bad(s);
     const plats = PLATS.map(p=>{
       const has = RAW.matrix[s.store]&&Object.keys(RAW.matrix[s.store]).some(t=>RAW.matrix[s.store][t][p]&&RAW.matrix[s.store][t][p].total>0);
       return '<i class="'+(has?'on':'')+'" style="background:'+PLAT_COLORS[p]+'" title="'+p+(has?'已绑定':'未绑定')+'"></i>';
     }).join('');
     return '<div class="store-card" onclick="goStore(\''+s.store.replace(/'/g,"\\'")+'\')">'+
       '<div class="nm">'+s.store+'</div>'+
-      '<div class="meta"><span><b>'+s.accounts+'</b> 账号</span><span>完成率 <b>'+pct(s.rate)+'</b></span>'+(bd?'<span style="color:#B42318;font-weight:700">'+bd+' 个任务未完成</span>':'<span style="color:#116932">'+participated+' 个参与任务均完成</span>')+'</div>'+
-      '<div class="tk">'+tk+'</div><div class="plats">'+plats+'</div></div>';
+      '<div class="meta"><span><b>'+s.accounts+'</b> 账号</span><span>完成率 <b>'+pct(s.rate)+'</b></span>'+(bd?'<span style="color:#B42318;font-weight:700">进行中任务 '+bd+' 个未完成</span>':'<span style="color:#116932">进行中任务暂无未完成</span>')+'</div>'+
+      '<div class="plats">'+plats+'</div></div>';
   }).join('');
 }
 function setSort(v){ storeSort=v; renderStores(); }
@@ -769,12 +778,20 @@ function renderSC(){
 function renderTaskStages(){
   const box=document.getElementById('scTaskStages');
   if(!box) return;
-  box.innerHTML=TASKS.length?'<div class="stage-list">'+TASKS.map(t=>'<div class="stage-row"><span>'+escapeHtml(t)+'</span><span>'+(RAW.task_stage_overrides&&RAW.task_stage_overrides[t]?'手动设置':'自动识别')+'</span><select data-stage-task="'+encodeURIComponent(t)+'" aria-label="'+escapeHtml(t)+' 的任务阶段">'+Object.keys(TASK_STAGES).map(s=>'<option value="'+s+'"'+(taskStage(t)===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>').join('')+'</div>':'<span class="empty-line">暂无任务数据，上传后可设置阶段。</span>';
+  const groups=['待核实','进行中','审核中','已结束'];
+  box.innerHTML=TASKS.length?groups.map(stage=>{
+    const tasks=TASKS.filter(t=>taskStage(t)===stage);
+    return '<div class="stage-group"><h3>'+stage+' · '+tasks.length+' 项</h3>'+
+      (tasks.length?'<div class="stage-list">'+tasks.map(t=>{
+        const date=taskDate(t,RAW.source_works||[]);
+        return '<div class="stage-row"><span>'+escapeHtml(t)+'</span><span class="stage-date">'+(date?date.slice(0,10):'时间未记录')+'</span><span>'+(RAW.task_stage_overrides&&RAW.task_stage_overrides[t]?'手动设置':'自动识别')+'</span><select data-stage-task="'+encodeURIComponent(t)+'" aria-label="'+escapeHtml(t)+' 的任务阶段">'+Object.keys(TASK_STAGES).map(s=>'<option value="'+s+'"'+(taskStage(t)===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>';
+      }).join('')+'</div>':'<span class="empty-line">暂无任务</span>')+'</div>';
+  }).join(''):'<span class="empty-line">暂无任务数据，上传后可设置阶段。</span>';
   box.querySelectorAll('[data-stage-task]').forEach(sel=>sel.addEventListener('change',()=>{
     const task=decodeURIComponent(sel.getAttribute('data-stage-task'));
     RAW.task_stage_overrides=Object.assign({},RAW.task_stage_overrides||{},{[task]:sel.value});
     RAW.task_stages=Object.assign({},RAW.task_stages||{},{[task]:sel.value});
-    saveRaw(); renderTaskStages();
+    saveRaw(); render();
     setUploadStatus('已保存「'+task+'」的阶段：'+sel.value+'。','ok');
   }));
 }
