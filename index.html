@@ -205,7 +205,7 @@ tbody tr:hover{background:#FAFBFE}
 
     <div class="section-title"><h2>各任务整体完成率</h2><p>每项任务单独以该任务 Excel 中的账号数为分母，显示已完成账号数和完成率。</p></div>
     <div class="card"><div class="chart" id="chartTask"></div></div>
-    <div class="section-title"><h2>任务进度与参与账号</h2><p>各任务人数以各自导出表为准；任务阶段由城市运营中心核对设置。</p></div>
+    <div class="section-title"><h2>任务进度与参与账号</h2><p>各任务人数以各自导出表为准；已获奖励或积分的任务自动标记为已结束，其他阶段由城市运营中心核对。</p></div>
     <div class="card tbl-scroll"><table><thead><tr><th>任务</th><th>阶段</th><th>参与账号</th><th>已完成</th><th>完成率</th></tr></thead><tbody id="taskSummaryRows"></tbody></table></div>
 
     <div class="section-title"><h2>各平台作品数</h2><p>按平台汇总已发布作品数量，传播数据以矩阵通导出结果为准。</p></div>
@@ -263,7 +263,7 @@ tbody tr:hover{background:#FAFBFE}
       </div>
       <div class="sc-status" id="uploadStatus"></div>
     </div>
-    <div class="section-title"><h2>任务阶段</h2><p>源表没有任务阶段列；请按实际进度选择「进行中」「审核中」「已结束」或「待核实」，与账号完成情况分别显示。</p></div>
+    <div class="section-title"><h2>任务阶段</h2><p>任一账号的「奖励情况」为已获奖励或已获积分时，自动标记该任务为「已结束」。其余任务暂列「待核实」，请按实际进度手动选择；手动选择优先于自动识别。</p></div>
     <div class="card" id="scTaskStages"></div>
     <div class="section-title"><h2>待核对账号</h2><p>为需要核对的账号填写门店，填好后点击一次「批量确认归店」；未填写的账号继续保留待核对。</p></div>
     <div class="card" id="scPending"></div>
@@ -308,7 +308,7 @@ tbody tr:hover{background:#FAFBFE}
 </div>
 
 <footer class="foot">
-  本看板面向天津九号城市运营中心、各门店及管理人员，用于查看任务完成进度、账号执行情况和作品传播表现。数据来自矩阵通导出表，各任务按该表实际参与账号统计；表中没有的门店不算未完成。任务阶段由城市运营中心确认，不能仅凭积分或奖励推断。门店如发现账号归属或数据需要修正，请联系天津九号城市运营中心核对。数据更新时间：<span id="footerUpdated">—</span>。
+  本看板面向天津九号城市运营中心、各门店及管理人员，用于查看任务完成进度、账号执行情况和作品传播表现。数据来自矩阵通导出表，各任务按该表实际参与账号统计；表中没有的门店不算未完成。已有账号获得奖励或积分的任务自动标记为已结束；其余任务阶段由城市运营中心核对，手动选择优先。门店如发现账号归属或数据需要修正，请联系天津九号城市运营中心核对。数据更新时间：<span id="footerUpdated">—</span>。
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -397,6 +397,9 @@ function taskOrder(rows){
   (rows||[]).forEach((r,i)=>{ const t=clean(r.task); if(t&&!seen.has(t)) seen.set(t,i); });
   return Array.from(seen.keys());
 }
+function inferredTaskStage(rows){
+  return rows.some(r=>/^已获(?:奖励|积分)/.test(clean(r.reward)))?'已结束':'待核实';
+}
 function aggregate(rows){
   const total=rows.length, done=rows.filter(r=>r.status==='已完成').length;
   return {accounts:unique(rows.map(r=>keyOf(r.platform,r.nickname))).length,done,total,
@@ -427,13 +430,23 @@ function rebuildRaw(sourceRows,sourceWorks,manual){
   const accts={}; stores.forEach(store=>{ accts[store]=[]; const part=rows.filter(r=>r.store===store); unique(part.map(r=>keyOf(r.platform,r.nickname))).forEach(k=>{ const [platform,nickname]=k.split('||'); const q=part.filter(r=>keyOf(r.platform,r.nickname)===k); const tasks={}; q.forEach(r=>{tasks[r.task]=r.status;}); accts[store].push({platform,nickname,tasks}); }); });
   const unmapped=[]; const un=rows.filter(r=>r.store==='待核对'); unique(un.map(r=>keyOf(r.platform,r.nickname))).forEach(k=>{ const [platform,nickname]=k.split('||'); const q=un.filter(r=>keyOf(r.platform,r.nickname)===k); unmapped.push({platform,nickname,operators:unique(q.map(r=>r.operator).filter(Boolean)),tasks:Object.fromEntries(q.map(r=>[r.task,r.status]))}); });
   const all=aggregate(rows); const kpi=Object.assign({},all,{stores:stores.length,accounts:unique(rows.map(r=>keyOf(r.platform,r.nickname))).length,records:rows.length,unmapped_accounts:unmapped.length});
-  const stages={}; taskNames.forEach(task=>{ stages[task]=((RAW&&RAW.task_stages)||{})[task]||'待核实'; });
-  return {context:'天津九号城市运营中心',updated_at:RAW&&RAW.updated_at?RAW.updated_at:'',kpi,stores:storeSummary,task_store:taskStore,plat_sum:platSum,team,works,matrix,accts,unmapped_accounts:unmapped,manual_mappings:manual||{},task_stages:stages,source_rows:rows.map(r=>Object.assign({},r)),source_works:(sourceWorks||[]).map(w=>Object.assign({},w))};
+  const overrides=Object.assign({},(RAW&&RAW.task_stage_overrides)||{});
+  const stages={}; taskNames.forEach(task=>{ stages[task]=overrides[task]||inferredTaskStage(rows.filter(r=>r.task===task)); });
+  return {context:'天津九号城市运营中心',updated_at:RAW&&RAW.updated_at?RAW.updated_at:'',kpi,stores:storeSummary,task_store:taskStore,plat_sum:platSum,team,works,matrix,accts,unmapped_accounts:unmapped,manual_mappings:manual||{},task_stages:stages,task_stage_overrides:overrides,source_rows:rows.map(r=>Object.assign({},r)),source_works:(sourceWorks||[]).map(w=>Object.assign({},w))};
 }
 function loadStoredRaw(){
   try{
     const saved=localStorage.getItem(SC_KEY);
-    if(saved){ const x=JSON.parse(saved); if(x&&Array.isArray(x.source_rows)&&Array.isArray(x.source_works)) return x; }
+    if(saved){
+      const x=JSON.parse(saved);
+      if(x&&Array.isArray(x.source_rows)&&Array.isArray(x.source_works)){
+        if(!x.task_stage_overrides){
+          x.task_stage_overrides={};
+          Object.entries(x.task_stages||{}).forEach(([task,stage])=>{ if(stage&&stage!=='待核实') x.task_stage_overrides[task]=stage; });
+        }
+        return x;
+      }
+    }
   }catch(e){}
   return null;
 }
@@ -756,11 +769,12 @@ function renderSC(){
 function renderTaskStages(){
   const box=document.getElementById('scTaskStages');
   if(!box) return;
-  box.innerHTML=TASKS.length?'<div class="stage-list">'+TASKS.map(t=>'<div class="stage-row"><span>'+escapeHtml(t)+'</span><select data-stage-task="'+encodeURIComponent(t)+'" aria-label="'+escapeHtml(t)+' 的任务阶段">'+Object.keys(TASK_STAGES).map(s=>'<option value="'+s+'"'+(taskStage(t)===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>').join('')+'</div>':'<span class="empty-line">暂无任务数据，上传后可设置阶段。</span>';
+  box.innerHTML=TASKS.length?'<div class="stage-list">'+TASKS.map(t=>'<div class="stage-row"><span>'+escapeHtml(t)+'</span><span>'+(RAW.task_stage_overrides&&RAW.task_stage_overrides[t]?'手动设置':'自动识别')+'</span><select data-stage-task="'+encodeURIComponent(t)+'" aria-label="'+escapeHtml(t)+' 的任务阶段">'+Object.keys(TASK_STAGES).map(s=>'<option value="'+s+'"'+(taskStage(t)===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>').join('')+'</div>':'<span class="empty-line">暂无任务数据，上传后可设置阶段。</span>';
   box.querySelectorAll('[data-stage-task]').forEach(sel=>sel.addEventListener('change',()=>{
     const task=decodeURIComponent(sel.getAttribute('data-stage-task'));
+    RAW.task_stage_overrides=Object.assign({},RAW.task_stage_overrides||{},{[task]:sel.value});
     RAW.task_stages=Object.assign({},RAW.task_stages||{},{[task]:sel.value});
-    saveRaw();
+    saveRaw(); renderTaskStages();
     setUploadStatus('已保存「'+task+'」的阶段：'+sel.value+'。','ok');
   }));
 }
@@ -785,7 +799,7 @@ async function parseUploadFile(file){
   if(!accountRows.length) throw new Error(file.name+' 没有找到「账号完成情况」工作表或内容为空。');
   const task=clean(accountRows.map(r=>r['任务名称']).find(Boolean))||taskNameFromFilename(file.name);
   const rows=accountRows.map(r=>({task,platform:clean(r['平台']),nickname:clean(r['账号昵称']),account_id:clean(r['账号id']),
-    operator:clean(r['运营人']),status:clean(r['任务情况']),works:num(r['作品数']),spread:num(r['传播总量']),interact:num(r['互动总量']),likes:num(r['获赞总量'])}))
+    operator:clean(r['运营人']),status:clean(r['任务情况']),reward:clean(r['奖励情况']),works:num(r['作品数']),spread:num(r['传播总量']),interact:num(r['互动总量']),likes:num(r['获赞总量'])}))
     .filter(r=>r.platform&&r.nickname);
   const works=rowsFromSheet(wb,'作品数据').map(r=>({task,platform:clean(r['平台']),type:clean(r['类型']),title:clean(r['作品标题']),link:clean(r['作品链接']),
     pub_time:clean(r['发布时间']),account:clean(r['发布账号']),operator:clean(r['运营人']),plays:num(r['预估播放数/阅读数']),interact:num(r['互动量']),likes:num(r['获赞数']),comments:num(r['评论数'])}))
