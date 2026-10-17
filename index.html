@@ -248,7 +248,7 @@ tbody tr:hover{background:#FAFBFE}
 <header class="topbar">
   <div class="topbar-in">
     <div class="brand"><span class="logo">9</span><span class="brand-title">天津门店 KOS 视频数据看板<small>KOS/员工账号</small></span></div>
-    <span class="version-badge">v2.3.3</span>
+    <span class="version-badge">v2.3.4</span>
     <span class="work-chip">天津九号城市运营中心</span>
     <span class="updated-at" id="updatedAt"></span>
     <nav class="nav" id="nav">
@@ -320,7 +320,7 @@ tbody tr:hover{background:#FAFBFE}
   <section id="sc" class="view">
     <div class="section-title"><h2>更新数据</h2><p>仅通过地址栏输入 <code>#sc</code> 进入，不在看板导航显示。</p></div>
     <div class="card">
-      <div class="sc-intro">从矩阵通选择一个或多个任务 Excel 上传。不同领导发布的同名任务分别统计；「苏超」的张发、白发两份表会显示为两个任务。重传同名文件时只替换该文件的数据。核对后下载 data.json 替换 GitHub 仓库同名文件，门店刷新即可查看。</div>
+      <div class="sc-intro">从矩阵通选择一个或多个任务 Excel 上传。同名任务按来源文件分别统计；重传同名文件只替换该文件的数据。核对后下载 data.json 替换 GitHub 仓库同名文件，门店刷新即可查看。</div>
       <div class="sc-actions">
         <input class="file-input" id="dataFiles" type="file" accept=".xlsx,.xls" multiple>
         <button class="primary-btn" id="applyUpload" type="button">识别并更新</button>
@@ -380,7 +380,7 @@ let TASKS = RAW.team.map(t=>t.task);
 const PLATS = ['抖音','快手','小红书','视频号'];
 const PLAT_COLORS = {'抖音':'#161823','快手':'#FF5A1F','小红书':'#FF2E4D','视频号':'#07C160'};
 const BLUE = '#1D6FF2';
-const SC_KEY = 'tjkos-dashboard-empty-v1';
+const SC_KEY = 'tjkos-dashboard-empty-v2';
 const TASK_STAGES = {'待核实':'','进行中':'active','审核中':'review','已结束':'ended'};
 function taskStage(task){ return (RAW.task_stages||{})[task]||'待核实'; }
 function stageTag(task){ const s=taskStage(task); return '<span class="stage-tag '+TASK_STAGES[s]+'">'+s+'</span>'; }
@@ -452,6 +452,38 @@ function keyOf(platform,nickname){ return clean(platform)+'||'+clean(nickname); 
 function taskNameFromFilename(name){
   const base=String(name||'').replace(/\.[^.]+$/,'').replace(/\d{10,}$/,'').trim();
   return base || '未命名任务';
+}
+function distinguishUploadedTasks(rows,works){
+  const filesByTask=new Map();
+  rows.concat(works).forEach(item=>{
+    const source=clean(item.source_task)||clean(item.task), file=clean(item.source_file);
+    if(!source||!file) return;
+    if(!filesByTask.has(source)) filesByTask.set(source,new Set());
+    filesByTask.get(source).add(file);
+  });
+  const oldNames=new Map();
+  (RAW.source_rows||[]).forEach(item=>{ if(item.source_file&&!oldNames.has(item.source_file)) oldNames.set(item.source_file,item.task); });
+  const labels=new Map();
+  filesByTask.forEach((files,source)=>{
+    const names=Array.from(files);
+    names.forEach(file=>{
+      const stem=file.replace(/\.[^.]+$/,'');
+      const suffix=names.filter(name=>name.replace(/\.[^.]+$/,'')===stem).length>1?file:stem;
+      labels.set(source+'|'+file,files.size>1?source+'（'+suffix+'）':source);
+    });
+  });
+  rows.concat(works).forEach(item=>{
+    item.source_task=clean(item.source_task)||clean(item.task);
+    item.task=labels.get(item.source_task+'|'+clean(item.source_file))||item.source_task;
+  });
+  const overrides=Object.assign({},RAW.task_stage_overrides||{});
+  rows.forEach(item=>{
+    const old=oldNames.get(item.source_file);
+    if(old&&old!==item.task&&overrides[old]&&!overrides[item.task]) overrides[item.task]=overrides[old];
+  });
+  const active=new Set(rows.map(item=>item.task));
+  Object.keys(overrides).forEach(task=>{ if(!active.has(task)) delete overrides[task]; });
+  return overrides;
 }
 function taskOrder(rows){
   const seen=new Map();
@@ -923,12 +955,11 @@ async function parseUploadFile(file){
   const accountRows=rowsFromSheet(wb,'账号完成情况');
   if(!accountRows.length) throw new Error(file.name+' 没有找到「账号完成情况」工作表或内容为空。');
   const sourceTask=clean(accountRows.map(r=>r['任务名称']).find(Boolean))||taskNameFromFilename(file.name);
-  const task=sourceTask==='九号两项硬核技术亮相苏超赛场'
-    ? sourceTask+'（'+(file.name.startsWith('白苏超')?'白发':'张发')+'）' : sourceTask;
-  const rows=accountRows.map(r=>({task,source_file:file.name,platform:clean(r['平台']),nickname:clean(r['账号昵称']),account_id:clean(r['账号id']),
+  const task=sourceTask;
+  const rows=accountRows.map(r=>({task,source_task:sourceTask,source_file:file.name,platform:clean(r['平台']),nickname:clean(r['账号昵称']),account_id:clean(r['账号id']),
     operator:clean(r['运营人']),status:clean(r['任务情况']),reward:clean(r['奖励情况']),works:num(r['作品数']),spread:num(r['传播总量']),interact:num(r['互动总量']),likes:num(r['获赞总量'])}))
     .filter(r=>r.platform&&r.nickname);
-  const works=rowsFromSheet(wb,'作品数据').map(r=>({task,source_file:file.name,platform:clean(r['平台']),type:clean(r['类型']),title:clean(r['作品标题']),link:clean(r['作品链接']),
+  const works=rowsFromSheet(wb,'作品数据').map(r=>({task,source_task:sourceTask,source_file:file.name,platform:clean(r['平台']),type:clean(r['类型']),title:clean(r['作品标题']),link:clean(r['作品链接']),
     pub_time:clean(r['发布时间']),account:clean(r['发布账号']),operator:clean(r['运营人']),plays:num(r['预估播放数/阅读数']),interact:num(r['互动量']),likes:num(r['获赞数']),comments:num(r['评论数'])}))
     .filter(w=>w.platform);
   return {task,rows,works,name:file.name};
@@ -939,9 +970,13 @@ async function applyUpload(){
   setUploadStatus('正在读取 '+files.length+' 个文件…');
   try{
     const parsed=[]; for(const file of files) parsed.push(await parseUploadFile(file));
-    const tasks=new Set(parsed.map(x=>x.task)), uploadedNames=new Set(parsed.map(x=>x.name));
-    const rows=dedupeUploaded((RAW.source_rows||[]).filter(r=>!uploadedNames.has(r.source_file)).concat(parsed.flatMap(x=>x.rows)),accountUploadKey);
-    const works=dedupeUploaded((RAW.source_works||[]).filter(w=>!uploadedNames.has(w.source_file)).concat(parsed.flatMap(x=>x.works)),workUploadKey);
+    const uploadedNames=new Set(parsed.map(x=>x.name));
+    const combinedRows=(RAW.source_rows||[]).filter(r=>!uploadedNames.has(r.source_file)).map(r=>Object.assign({},r)).concat(parsed.flatMap(x=>x.rows));
+    const combinedWorks=(RAW.source_works||[]).filter(w=>!uploadedNames.has(w.source_file)).map(w=>Object.assign({},w)).concat(parsed.flatMap(x=>x.works));
+    RAW.task_stage_overrides=distinguishUploadedTasks(combinedRows,combinedWorks);
+    const rows=dedupeUploaded(combinedRows,accountUploadKey);
+    const works=dedupeUploaded(combinedWorks,workUploadKey);
+    const tasks=new Set(parsed.map(x=>x.rows[0]&&x.rows[0].task).filter(Boolean));
     const next=rebuildRaw(rows,works,RAW.manual_mappings||{});
     next.updated_at=nowText(); next.source_files=Array.from(new Set((RAW.source_files||[]).concat(parsed.map(x=>x.name))));
     RAW=next; saveRaw(); syncRuntime(); render();
