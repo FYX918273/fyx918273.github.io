@@ -248,7 +248,7 @@ tbody tr:hover{background:#FAFBFE}
 <header class="topbar">
   <div class="topbar-in">
     <div class="brand"><span class="logo">9</span><span class="brand-title">天津门店 KOS 视频数据看板<small>KOS/员工账号</small></span></div>
-    <span class="version-badge">v2.3.4</span>
+    <span class="version-badge">v2.3.5</span>
     <span class="work-chip">天津九号城市运营中心</span>
     <span class="updated-at" id="updatedAt"></span>
     <nav class="nav" id="nav">
@@ -376,6 +376,7 @@ tbody tr:hover{background:#FAFBFE}
 <script>
 const BASE_RAW = {context:'天津九号城市运营中心',updated_at:'',kpi:{accounts:0,done:0,total:0,rate:0,works:0,spread:0,interact:0,likes:0,stores:0,records:0,unmapped_accounts:0},stores:[],task_store:{},plat_sum:{'抖音':{works:0},'快手':{works:0},'小红书':{works:0},'视频号':{works:0}},team:[],works:[],matrix:{},accts:{},unmapped_accounts:[],manual_mappings:{},task_stages:{},task_stage_overrides:{},source_rows:[],source_works:[],source_files:[]};
 let RAW = JSON.parse(JSON.stringify(BASE_RAW));
+let dataIsDraft = false;
 let TASKS = RAW.team.map(t=>t.task);
 const PLATS = ['抖音','快手','小红书','视频号'];
 const PLAT_COLORS = {'抖音':'#161823','快手':'#FF5A1F','小红书':'#FF2E4D','视频号':'#07C160'};
@@ -560,15 +561,15 @@ async function loadPublishedData(){
     if(!response.ok) throw new Error('数据文件读取失败');
     const data=await response.json();
     if(!data||!Array.isArray(data.source_rows)||!Array.isArray(data.source_works)||!Array.isArray(data.team)) throw new Error('数据文件格式不正确');
-    RAW=data;
+    RAW=data; dataIsDraft=false;
     const draft=loadStoredRaw();
-    if(location.hash==='#sc'&&draft&&Array.isArray(draft.team)&&draft.updated_at){
-      RAW=draft;
-      setUploadStatus('当前显示本机草稿；其他设备显示的是已发布数据。核对后下载 data.json 并替换仓库文件。','ok');
+    if(draft&&Array.isArray(draft.team)&&draft.updated_at&&draft.updated_at>clean(data.updated_at)){
+      RAW=draft; dataIsDraft=true;
+      if(location.hash==='#sc') setUploadStatus('当前显示本机草稿；其他设备显示的是已发布数据。核对后下载 data.json 并替换仓库文件。','ok');
     }
   }catch(e){
     const draft=loadStoredRaw();
-    if(draft&&Array.isArray(draft.team)) RAW=draft;
+    if(draft&&Array.isArray(draft.team)){ RAW=draft; dataIsDraft=true; }
   }
   syncRuntime();render();
 }
@@ -582,7 +583,7 @@ function downloadData(){
 function syncRuntime(){
   TASKS=sortTasksByDate(RAW.team.map(t=>t.task),RAW.source_works||[]);
   RAW.team.sort((a,b)=>TASKS.indexOf(a.task)-TASKS.indexOf(b.task));
-  const text='数据更新时间：'+(RAW.updated_at||'—');
+  const text='数据更新时间：'+(RAW.updated_at||'—')+(dataIsDraft?'（本机草稿）':'');
   const a=document.getElementById('updatedAt'), b=document.getElementById('footerUpdated');
   if(a) a.textContent=text; if(b) b.textContent=RAW.updated_at||'—';
 }
@@ -628,12 +629,6 @@ function render(){
   window.scrollTo(0,0);
 }
 window.addEventListener('hashchange',()=>{
-  if(location.hash==='#sc'){
-    const draft=loadStoredRaw();
-    if(draft&&Array.isArray(draft.team)&&draft.updated_at){RAW=draft;syncRuntime();setUploadStatus('当前显示本机草稿；其他设备显示的是已发布数据。','ok');}
-  }else if(RAW.updated_at&&localStorage.getItem(SC_KEY)){
-    loadPublishedData();return;
-  }
   render();
 });
 
@@ -924,7 +919,7 @@ function saveAllMappings(){
   const manual=Object.assign({},RAW.manual_mappings||{});
   entries.forEach(x=>{ manual[x.nickname]=x.store; });
   const next=rebuildRaw(RAW.source_rows||[],RAW.source_works||[],manual);
-  RAW=next; saveRaw(); syncRuntime(); render();
+  RAW=next; dataIsDraft=true; saveRaw(); syncRuntime(); render();
   setUploadStatus('已批量确认 '+entries.length+' 个账号；其余账号仍可继续核对。','ok');
 }
 function rowsFromSheet(wb,name){
@@ -979,7 +974,7 @@ async function applyUpload(){
     const tasks=new Set(parsed.map(x=>x.rows[0]&&x.rows[0].task).filter(Boolean));
     const next=rebuildRaw(rows,works,RAW.manual_mappings||{});
     next.updated_at=nowText(); next.source_files=Array.from(new Set((RAW.source_files||[]).concat(parsed.map(x=>x.name))));
-    RAW=next; saveRaw(); syncRuntime(); render();
+    RAW=next; dataIsDraft=true; saveRaw(); syncRuntime(); render();
     setUploadStatus('已处理 '+parsed.length+' 份文件，记录为 '+tasks.size+' 个独立任务：'+Array.from(tasks).join('、')+'。本批账号 '+dedupeUploaded(parsed.flatMap(x=>x.rows),accountUploadKey).length+' 条、作品 '+dedupeUploaded(parsed.flatMap(x=>x.works),workUploadKey).length+' 条。最后更新时间 '+RAW.updated_at+'。','ok');
     input.value='';
   }catch(err){ setUploadStatus('更新失败：'+(err&&err.message?err.message:String(err)),'err'); }
