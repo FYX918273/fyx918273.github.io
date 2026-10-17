@@ -111,6 +111,14 @@ tbody tr:hover{background:#FAFBFE}
 .store-card .tk{display:flex;flex-direction:column;gap:4px;margin-top:2px}
 .store-card .tk-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub)}
 .store-card .tk-row .tname{flex:none;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.account-card{border:1px solid var(--line);border-radius:10px;padding:11px;min-width:0;background:#fff}
+.account-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.account-head strong{font-size:13px;min-width:0;overflow-wrap:anywhere}
+.account-head .badge{flex:none}
+.account-task{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid #EEF2F8;font-size:12px}
+.account-task span:first-child{min-width:0;overflow-wrap:anywhere}
+.account-task .badge{flex:none}
 .plats{display:flex;gap:4px;margin-top:auto}
 .plats i{width:14px;height:14px;border-radius:50%;opacity:.25}
 .plats i.on{opacity:1}
@@ -190,6 +198,7 @@ tbody tr:hover{background:#FAFBFE}
   .kpi .val{font-size:clamp(18px,6vw,23px);line-height:1.2;overflow-wrap:anywhere}
   .kpi .ex{font-size:10.5px;line-height:1.35;overflow-wrap:anywhere}
   .alert-grid,.store-grid,.insights{grid-template-columns:1fr;gap:9px}
+  .account-list{grid-template-columns:1fr}
   .alert{padding:12px;min-width:0}
   .alert .at{font-size:13px;overflow-wrap:anywhere;align-items:flex-start}
   .alert .cnt{font-size:12px;line-height:1.5}
@@ -239,7 +248,7 @@ tbody tr:hover{background:#FAFBFE}
 <header class="topbar">
   <div class="topbar-in">
     <div class="brand"><span class="logo">9</span><span class="brand-title">天津门店 KOS 视频数据看板<small>KOS/员工账号</small></span></div>
-    <span class="version-badge">v2.3.0</span>
+    <span class="version-badge">v2.3.3</span>
     <span class="work-chip">天津九号城市运营中心</span>
     <span class="updated-at" id="updatedAt"></span>
     <nav class="nav" id="nav">
@@ -279,7 +288,7 @@ tbody tr:hover{background:#FAFBFE}
 
   <!-- ===== 视图：任务完成度 ===== -->
   <section id="tasks" class="view">
-    <div class="section-title"><h2>任务 × 平台 完成矩阵</h2><p>每项任务按自己的参与账号统计；该任务表中没有出现的门店显示「未参与任务」。点击门店名称查看明细。</p></div>
+    <div class="section-title"><h2>任务 × 平台 完成矩阵</h2><p>每项任务只显示实际参与的门店；点击门店名称查看明细。</p></div>
     <div class="toolbar">
       <div class="fbtns" id="taskTabs"></div>
       <div class="fbtns" id="taskFilt"></div>
@@ -311,7 +320,7 @@ tbody tr:hover{background:#FAFBFE}
   <section id="sc" class="view">
     <div class="section-title"><h2>更新数据</h2><p>仅通过地址栏输入 <code>#sc</code> 进入，不在看板导航显示。</p></div>
     <div class="card">
-      <div class="sc-intro">从矩阵通选择一个或多个任务 Excel 上传；每个任务按自己文件里的账号和门店计算。上传后可先在本机核对，再下载独立的 data.json 并替换 GitHub 仓库中的同名文件，让所有门店看到相同数据。页面代码与数据文件分开；本机草稿也会保存在当前浏览器。</div>
+      <div class="sc-intro">从矩阵通选择一个或多个任务 Excel 上传。不同领导发布的同名任务分别统计；「苏超」的张发、白发两份表会显示为两个任务。重传同名文件时只替换该文件的数据。核对后下载 data.json 替换 GitHub 仓库同名文件，门店刷新即可查看。</div>
       <div class="sc-actions">
         <input class="file-input" id="dataFiles" type="file" accept=".xlsx,.xls" multiple>
         <button class="primary-btn" id="applyUpload" type="button">识别并更新</button>
@@ -332,7 +341,7 @@ tbody tr:hover{background:#FAFBFE}
     <div class="crumbs"><a href="#stores">门店列表</a><span>›</span><a href="#tasks">任务</a></div>
     <div class="store-head" id="storeHead"></div>
     <div class="card" style="margin-bottom:14px">
-      <div class="section-title" style="margin-top:2px"><h2>任务 × 平台 完成度</h2><p>查看该门店各项任务在各平台的完成情况；整项任务未出现该门店时显示「未参与任务」。</p></div>
+      <div class="section-title" style="margin-top:2px"><h2>任务 × 平台 完成度</h2><p>只显示该门店实际参与的任务；没有绑定的平台仍显示「未绑定」。</p></div>
       <div class="matrix-wrap">
         <table>
           <colgroup><col style="width:28%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:16%"></colgroup>
@@ -342,13 +351,8 @@ tbody tr:hover{background:#FAFBFE}
       </div>
     </div>
     <div class="card" style="margin-bottom:14px">
-      <div class="section-title" style="margin-top:2px"><h2>账号明细</h2><p>查看该门店已纳入统计的账号和各项任务状态；「未参与」表示该账号不在该任务表中。</p></div>
-      <div class="tbl-scroll">
-        <table id="storeAcctsTable">
-          <thead><tr id="storeAcctsHead"></tr></thead>
-          <tbody id="storeAccts"></tbody>
-        </table>
-      </div>
+      <div class="section-title" style="margin-top:2px"><h2>账号明细</h2><p>按账号展开实际参与的任务，任务名称完整显示。</p></div>
+      <div class="account-list" id="storeAccts"></div>
     </div>
     <div class="card">
       <div class="section-title" style="margin-top:2px"><h2>作品明细</h2><p>查看该门店已发布作品及传播数据。</p></div>
@@ -475,7 +479,7 @@ function aggregate(rows){
     likes:rows.reduce((a,r)=>a+num(r.likes),0)};
 }
 function rebuildRaw(sourceRows,sourceWorks,manual){
-  const rows=(sourceRows||[]).map(r=>Object.assign({},r,{task:clean(r.task),platform:clean(r.platform),nickname:clean(r.nickname),
+  const rows=(sourceRows||[]).map(r=>Object.assign({},r,{task:clean(r.task),source_file:clean(r.source_file),platform:clean(r.platform),nickname:clean(r.nickname),
     operator:clean(r.operator),status:clean(r.status),works:num(r.works),spread:num(r.spread),interact:num(r.interact),likes:num(r.likes),
     store:mapStore(r.operator,r.nickname,manual)})).filter(r=>r.task&&r.platform&&r.nickname);
   const stores=unique(rows.filter(r=>r.store!=='待核对').map(r=>r.store)).sort((a,b)=>a.localeCompare(b,'zh-CN'));
@@ -490,7 +494,7 @@ function rebuildRaw(sourceRows,sourceWorks,manual){
   const works=(sourceWorks||[]).map(w=>{
     const platform=clean(w.platform), account=clean(w.account), operator=clean(w.operator);
     const store=mapStore(operator,account,manual)==='待核对'?(accountStore.get(keyOf(platform,account))||'待核对'):mapStore(operator,account,manual);
-    return {task:clean(w.task),platform,type:clean(w.type),title:clean(w.title),link:clean(w.link),pub_time:clean(w.pub_time),account,
+    return {task:clean(w.task),source_file:clean(w.source_file),platform,type:clean(w.type),title:clean(w.title),link:clean(w.link),pub_time:clean(w.pub_time),account,
       plays:num(w.plays),interact:num(w.interact),likes:num(w.likes),comments:num(w.comments),store};
   }).filter(w=>w.task&&w.platform).sort((a,b)=>b.plays-a.plays);
   const matrix={}; stores.forEach(store=>{ matrix[store]={}; taskNames.forEach(task=>{ const part=rows.filter(r=>r.store===store&&r.task===task); matrix[store][task]={}; PLATS.forEach(p=>{ const q=part.filter(r=>r.platform===p); if(q.length) matrix[store][task][p]=aggregate(q); }); }); });
@@ -523,13 +527,16 @@ async function loadPublishedData(){
     const response=await fetch('./data.json',{cache:'no-store'});
     if(!response.ok) throw new Error('数据文件读取失败');
     const data=await response.json();
-    if(!data||!Array.isArray(data.source_rows)||!Array.isArray(data.source_works)) throw new Error('数据文件格式不正确');
+    if(!data||!Array.isArray(data.source_rows)||!Array.isArray(data.source_works)||!Array.isArray(data.team)) throw new Error('数据文件格式不正确');
     RAW=data;
     const draft=loadStoredRaw();
-    if(draft&&draft.updated_at&&(!RAW.updated_at||draft.updated_at>RAW.updated_at)) RAW=draft;
+    if(location.hash==='#sc'&&draft&&Array.isArray(draft.team)&&draft.updated_at){
+      RAW=draft;
+      setUploadStatus('当前显示本机草稿；其他设备显示的是已发布数据。核对后下载 data.json 并替换仓库文件。','ok');
+    }
   }catch(e){
     const draft=loadStoredRaw();
-    if(draft) RAW=draft;
+    if(draft&&Array.isArray(draft.team)) RAW=draft;
   }
   syncRuntime();render();
 }
@@ -588,7 +595,15 @@ function render(){
   else renderStore();
   window.scrollTo(0,0);
 }
-window.addEventListener('hashchange', render);
+window.addEventListener('hashchange',()=>{
+  if(location.hash==='#sc'){
+    const draft=loadStoredRaw();
+    if(draft&&Array.isArray(draft.team)&&draft.updated_at){RAW=draft;syncRuntime();setUploadStatus('当前显示本机草稿；其他设备显示的是已发布数据。','ok');}
+  }else if(RAW.updated_at&&localStorage.getItem(SC_KEY)){
+    loadPublishedData();return;
+  }
+  render();
+});
 
 /* ===== ECharts 通用 ===== */
 function mkChart(id){
@@ -709,7 +724,7 @@ function renderTasks(){
     '<button class="fbtn t-'+f[0]+(taskFilt===f[0]?' on':'')+'" onclick="setFilt(\''+f[0]+'\')">'+f[1]+'</button>').join('');
 
   const order = {'todo':0,'partial':1,'done':2,'absent':3};
-  const rows = RAW.stores.map(s=>({store:s.store, st:taskStatus(s.store,cur.task)})).slice();
+  const rows = RAW.stores.map(s=>({store:s.store, st:taskStatus(s.store,cur.task)})).filter(r=>r.st!=='absent');
   rows.sort((a,b)=>{
     const d=order[a.st]-order[b.st]; if(d) return d;
     const sa=storeRow(a.store).spread, sb=storeRow(b.store).spread;
@@ -788,34 +803,31 @@ function renderStore(){
     '<div class="info"><div class="n">'+fmt(s.likes)+'</div><div class="l">获赞</div></div>'+
     '</div>';
 
-  document.getElementById('storeMatrix').innerHTML = TASKS.map(t=>{
+  document.getElementById('storeMatrix').innerHTML = TASKS.filter(t=>taskStatus(name,t)!=='absent').map(t=>{
     const c = cellsOf(name,t);
     const bp = boundPlats(name,t);
     const st = taskStatus(name,t);
     const tds = PLATS.map(p=>{
       const cell = c[p];
-      if(!cell||!cell.total) return '<td><div class="cell cell-un">'+(st==='absent'?'未参与':'未绑定')+'</div></td>';
+      if(!cell||!cell.total) return '<td><div class="cell cell-un">未绑定</div></td>';
       const full = cell.done>=cell.total;
       const cls = full?'cell-ok':(cell.done===0?'cell-no':'cell-part');
       const txt = cell.total>1 ? cell.done+'/'+cell.total : (full?'完成':'未完成');
       return '<td><div class="cell '+cls+'">'+txt+'<small>'+(cell.works?cell.works+' 作品':'')+(cell.spread?' · '+fmt(cell.spread)+' 传播':'')+'</small></div></td>';
     }).join('');
     const spread = Object.values(c).reduce((a,x)=>a+(x.spread||0),0);
-    return '<tr><td><b>'+escapeHtml(t)+'</b><br>'+stageTag(t)+' <span style="font-size:11px;color:var(--sub)">'+(st==='absent'?'未参与任务':'参与 '+bp.length+' 平台')+'</span></td>'+tds+
+    return '<tr><td><b>'+escapeHtml(t)+'</b><br>'+stageTag(t)+' <span style="font-size:11px;color:var(--sub)">参与 '+bp.length+' 平台</span></td>'+tds+
       '<td>'+badge(st)+'<div style="font-size:11px;color:var(--sub);margin-top:4px">传播 '+fmt(spread)+'</div></td></tr>';
   }).join('');
 
-  document.getElementById('storeAcctsHead').innerHTML='<th>账号昵称</th><th>平台</th>'+TASKS.map(t=>'<th title="'+escapeHtml(t)+'">'+escapeHtml(t.length>12?t.slice(0,12)+'…':t)+'</th>').join('');
-  document.getElementById('storeAcctsTable').style.minWidth=Math.max(700,300+TASKS.length*145)+'px';
   const accts = (RAW.accts[name]||[]).slice();
   accts.sort((a,b)=>PLATS.indexOf(a.platform)-PLATS.indexOf(b.platform));
   document.getElementById('storeAccts').innerHTML = accts.map(a=>{
-    const tds = TASKS.map(t=>{
+    const tasks = TASKS.filter(t=>a.tasks[t]).map(t=>{
       const st = a.tasks[t];
-      const cls = !st?'cell-un':st==='已完成'?'cell-ok':'cell-no';
-      return '<td><div class="cell '+cls+'" style="min-width:0;padding:3px 2px;font-size:11.5px">'+(!st?'未参与':st==='已完成'?'完成':'未完成')+'</div></td>';
+      return '<div class="account-task"><span>'+escapeHtml(t)+'</span><span class="badge '+(st==='已完成'?'done':'todo')+'">'+(st==='已完成'?'完成':'未完成')+'</span></div>';
     }).join('');
-    return '<tr><td>'+a.nickname+'</td><td><span class="plat-dot" style="background:'+PLAT_COLORS[a.platform]+'"></span>'+a.platform+'</td>'+tds+'</tr>';
+    return '<div class="account-card"><div class="account-head"><strong>'+escapeHtml(a.nickname)+'</strong><span class="badge absent"><span class="plat-dot" style="background:'+PLAT_COLORS[a.platform]+'"></span>'+escapeHtml(a.platform)+'</span></div>'+tasks+'</div>';
   }).join('');
 
   const works = RAW.works.filter(w=>w.store===name).slice(0,20);
@@ -887,16 +899,36 @@ function rowsFromSheet(wb,name){
   const ws=wb.Sheets[name];
   return ws?XLSX.utils.sheet_to_json(ws,{defval:null,raw:true}):[];
 }
+function accountUploadKey(row){
+  const id=clean(row.account_id);
+  return row.task+'||'+row.platform+'||'+(id&&id!=='-'?'id:'+id:'name:'+row.nickname);
+}
+function workUploadKey(work){
+  const link=clean(work.link).split('?')[0].replace(/\/$/,'');
+  return work.task+'||'+work.platform+'||'+(link?'url:'+link:'fallback:'+work.account+'||'+work.pub_time+'||'+work.title);
+}
+function dedupeUploaded(items,keyFn){
+  const seen=new Map();
+  items.forEach(item=>{
+    const key=keyFn(item),old=seen.get(key);
+    if(!old){seen.set(key,item);return;}
+    const score=row=>Object.values(row).filter(v=>v!==null&&v!==undefined&&v!==''&&v!=='-'&&v!==0).length;
+    if(score(item)>score(old)) seen.set(key,item);
+  });
+  return Array.from(seen.values());
+}
 async function parseUploadFile(file){
   if(typeof XLSX==='undefined') throw new Error('Excel 解析组件未加载，请检查网络后重试。');
   const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});
   const accountRows=rowsFromSheet(wb,'账号完成情况');
   if(!accountRows.length) throw new Error(file.name+' 没有找到「账号完成情况」工作表或内容为空。');
-  const task=clean(accountRows.map(r=>r['任务名称']).find(Boolean))||taskNameFromFilename(file.name);
-  const rows=accountRows.map(r=>({task,platform:clean(r['平台']),nickname:clean(r['账号昵称']),account_id:clean(r['账号id']),
+  const sourceTask=clean(accountRows.map(r=>r['任务名称']).find(Boolean))||taskNameFromFilename(file.name);
+  const task=sourceTask==='九号两项硬核技术亮相苏超赛场'
+    ? sourceTask+'（'+(file.name.startsWith('白苏超')?'白发':'张发')+'）' : sourceTask;
+  const rows=accountRows.map(r=>({task,source_file:file.name,platform:clean(r['平台']),nickname:clean(r['账号昵称']),account_id:clean(r['账号id']),
     operator:clean(r['运营人']),status:clean(r['任务情况']),reward:clean(r['奖励情况']),works:num(r['作品数']),spread:num(r['传播总量']),interact:num(r['互动总量']),likes:num(r['获赞总量'])}))
     .filter(r=>r.platform&&r.nickname);
-  const works=rowsFromSheet(wb,'作品数据').map(r=>({task,platform:clean(r['平台']),type:clean(r['类型']),title:clean(r['作品标题']),link:clean(r['作品链接']),
+  const works=rowsFromSheet(wb,'作品数据').map(r=>({task,source_file:file.name,platform:clean(r['平台']),type:clean(r['类型']),title:clean(r['作品标题']),link:clean(r['作品链接']),
     pub_time:clean(r['发布时间']),account:clean(r['发布账号']),operator:clean(r['运营人']),plays:num(r['预估播放数/阅读数']),interact:num(r['互动量']),likes:num(r['获赞数']),comments:num(r['评论数'])}))
     .filter(w=>w.platform);
   return {task,rows,works,name:file.name};
@@ -906,20 +938,20 @@ async function applyUpload(){
   if(!files.length){ setUploadStatus('请选择一个或多个 .xlsx 文件。','err'); return; }
   setUploadStatus('正在读取 '+files.length+' 个文件…');
   try{
-    const byTask=new Map(); for(const file of files){ const item=await parseUploadFile(file); byTask.set(item.task,item); }
-    const parsed=Array.from(byTask.values()), tasks=new Set(byTask.keys());
-    const rows=(RAW.source_rows||[]).filter(r=>!tasks.has(r.task)).concat(parsed.flatMap(x=>x.rows));
-    const works=(RAW.source_works||[]).filter(w=>!tasks.has(w.task)).concat(parsed.flatMap(x=>x.works));
+    const parsed=[]; for(const file of files) parsed.push(await parseUploadFile(file));
+    const tasks=new Set(parsed.map(x=>x.task)), uploadedNames=new Set(parsed.map(x=>x.name));
+    const rows=dedupeUploaded((RAW.source_rows||[]).filter(r=>!uploadedNames.has(r.source_file)).concat(parsed.flatMap(x=>x.rows)),accountUploadKey);
+    const works=dedupeUploaded((RAW.source_works||[]).filter(w=>!uploadedNames.has(w.source_file)).concat(parsed.flatMap(x=>x.works)),workUploadKey);
     const next=rebuildRaw(rows,works,RAW.manual_mappings||{});
-    next.updated_at=nowText(); next.source_files=parsed.map(x=>x.name);
+    next.updated_at=nowText(); next.source_files=Array.from(new Set((RAW.source_files||[]).concat(parsed.map(x=>x.name))));
     RAW=next; saveRaw(); syncRuntime(); render();
-    setUploadStatus('已更新 '+parsed.length+' 个任务：'+parsed.map(x=>x.task).join('、')+'。最后更新时间 '+RAW.updated_at+'。','ok');
+    setUploadStatus('已处理 '+parsed.length+' 份文件，记录为 '+tasks.size+' 个独立任务：'+Array.from(tasks).join('、')+'。本批账号 '+dedupeUploaded(parsed.flatMap(x=>x.rows),accountUploadKey).length+' 条、作品 '+dedupeUploaded(parsed.flatMap(x=>x.works),workUploadKey).length+' 条。最后更新时间 '+RAW.updated_at+'。','ok');
     input.value='';
   }catch(err){ setUploadStatus('更新失败：'+(err&&err.message?err.message:String(err)),'err'); }
 }
 function resetData(){
   try{localStorage.removeItem(SC_KEY);}catch(e){}
-  RAW=clone(BASE_RAW); syncRuntime(); render(); setUploadStatus('已清空当前浏览器数据。','ok');
+  loadPublishedData().then(()=>setUploadStatus('已清除本机草稿，恢复已发布数据。','ok'));
 }
 document.getElementById('applyUpload').addEventListener('click',applyUpload);
 document.getElementById('downloadData').addEventListener('click',downloadData);
